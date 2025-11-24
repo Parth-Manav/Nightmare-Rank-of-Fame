@@ -1,6 +1,6 @@
 # Discord Role Manager Bot 2.0
 
-A modern Discord bot for managing and displaying member roles with slash commands.
+A Discord bot for managing and displaying member roles with slash commands for the Nightmare family.
 
 ## Features
 
