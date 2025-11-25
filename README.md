@@ -1,6 +1,6 @@
 # Discord Role Manager Bot 2.0
 
-A modern Discord bot for managing and displaying member roles with slash commands.
+A Discord bot for managing and displaying member roles with slash commands for the Nightmare family.
 
 ## Features
 
@@ -69,18 +69,6 @@ All commands require Administrator permissions.
 4. **Assign roles** to members - the display updates automatically!
 
 The bot creates beautiful embeds showing each member's avatar, name, and their managed roles. When roles change (either via bot commands or manually in Discord), the display updates automatically.
-
-## Improvements from v1.0
-
-- ✅ Migrated from prefix commands (`!command`) to slash commands (`/command`)
-- ✅ Added proper environment variable loading with `dotenv`
-- ✅ Smart message editing instead of bulk deletion (much faster!)
-- ✅ Comprehensive error handling and logging
-- ✅ Input validation and permission checks
-- ✅ Better user feedback with emojis and clear messages
-- ✅ Two new utility commands for listing managed roles and tracked members
-- ✅ Stores message IDs for efficient updates
-- ✅ Improved data file format with version field
 
 ## Logs
 
