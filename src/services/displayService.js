@@ -48,12 +48,11 @@ class DisplayService {
             .setTitle(`${member.displayName}'s Roles`)
             .setColor(member.displayHexColor || '#5865F2')
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
-            .setTimestamp();
+            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }));
 
         if (roles.length > 0) {
             const roleList = roles.map(role => `<@&${role.id}>`).join('\n');
             embed.setDescription(roleList);
-            embed.setFooter({ text: `${roles.length} role${roles.length !== 1 ? 's' : ''}` });
         } else {
             embed.setDescription('*No displayed roles for this user.*');
         }
