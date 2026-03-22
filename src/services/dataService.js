@@ -1,10 +1,12 @@
 const fs = require('fs');
+const fsPromises = require('fs/promises');
 const path = require('path');
 const logger = require('../utils/logger');
 
 class DataService {
     constructor() {
         this.dataFile = path.join(__dirname, '../../bot_data.json');
+        this.tempFile = path.join(__dirname, '../../bot_data.tmp.json');
         this.data = {
             version: '2.0.0',
             channel_id: null,
@@ -12,31 +14,61 @@ class DataService {
             managed_roles: {},
             message_ids: {}
         };
-        this.loadData();
+        this.isSaving = false;
+        this.saveQueue = false;
+        this.loadDataSync();
     }
 
-    loadData() {
+    loadDataSync() {
         try {
             if (fs.existsSync(this.dataFile)) {
-                const fileContent = fs.readFileSync(this.dataFile, 'utf8');
-                const loadedData = JSON.parse(fileContent);
-                this.data = { ...this.data, ...loadedData };
-                logger.info('Data loaded successfully');
+                try {
+                    const fileContent = fs.readFileSync(this.dataFile, 'utf8');
+                    const loadedData = JSON.parse(fileContent);
+                    this.data = { ...this.data, ...loadedData };
+                    logger.info('Data loaded successfully');
+                } catch (parseError) {
+                    logger.error('CRITICAL FATAL: bot_data.json is corrupted and failed to parse!', parseError);
+                    logger.error('ABORTING BOOT TO PREVENT CASCADING DATA ERASURE.');
+                    process.exit(1);
+                }
             } else {
                 logger.info('No existing data file found, starting fresh');
-                this.saveData();
+                this.saveDataAsync();
             }
         } catch (error) {
             logger.error('Error loading data:', error);
         }
     }
 
-    saveData() {
+    async saveDataAsync() {
+        if (this.isSaving) {
+            this.saveQueue = true;
+            return;
+        }
+        this.isSaving = true;
+        this.saveQueue = false;
+
         try {
-            fs.writeFileSync(this.dataFile, JSON.stringify(this.data, null, 2));
-            logger.debug('Data saved successfully');
+            const tempStr = JSON.stringify(this.data, null, 2);
+            await fsPromises.writeFile(this.tempFile, tempStr, 'utf8');
+            try {
+                await fsPromises.rename(this.tempFile, this.dataFile);
+            } catch (renameErr) {
+                if (renameErr.code === 'EXDEV') {
+                    await fsPromises.copyFile(this.tempFile, this.dataFile);
+                    await fsPromises.unlink(this.tempFile).catch(() => {});
+                } else throw renameErr;
+            }
+            logger.debug('Data saved successfully (Atomic)');
         } catch (error) {
-            logger.error('Error saving data:', error);
+            logger.error('Error saving data atomicaly:', error);
+        } finally {
+            this.isSaving = false;
+            // If another change occurred while saving, run it again to guarantee latest flush
+            if (this.saveQueue) {
+                await this.saveDataAsync();
+            }
         }
     }
 
@@ -46,7 +78,7 @@ class DataService {
 
     setChannelId(id) {
         this.data.channel_id = id;
-        this.saveData();
+        this.saveDataAsync();
     }
 
     getMembers() {
@@ -56,7 +88,7 @@ class DataService {
     addMember(memberId) {
         if (!this.data.members[memberId]) {
             this.data.members[memberId] = [];
-            this.saveData();
+            this.saveDataAsync();
             return true;
         }
         return false;
@@ -65,7 +97,7 @@ class DataService {
     removeMember(memberId) {
         if (this.data.members[memberId]) {
             delete this.data.members[memberId];
-            this.saveData();
+            this.saveDataAsync();
             return true;
         }
         return false;
@@ -77,7 +109,7 @@ class DataService {
 
     updateMemberRoles(memberId, roles) {
         this.data.members[memberId] = roles;
-        this.saveData();
+        this.saveDataAsync();
     }
 
     getManagedRoles() {
@@ -91,7 +123,7 @@ class DataService {
     addManagedRole(roleId) {
         if (!this.data.managed_roles[roleId]) {
             this.data.managed_roles[roleId] = true;
-            this.saveData();
+            this.saveDataAsync();
             return true;
         }
         return false;
@@ -100,7 +132,7 @@ class DataService {
     removeManagedRole(roleId) {
         if (this.data.managed_roles[roleId]) {
             delete this.data.managed_roles[roleId];
-            this.saveData();
+            this.saveDataAsync();
             return true;
         }
         return false;
@@ -112,13 +144,13 @@ class DataService {
 
     setMessageId(memberId, messageId) {
         this.data.message_ids[memberId] = messageId;
-        this.saveData();
+        this.saveDataAsync();
     }
 
     removeMessageId(memberId) {
         if (this.data.message_ids[memberId]) {
             delete this.data.message_ids[memberId];
-            this.saveData();
+            this.saveDataAsync();
         }
     }
 }

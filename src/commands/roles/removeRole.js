@@ -32,6 +32,15 @@ module.exports = {
             });
         }
 
+        // BUGFIX: Check if bot can manage this role first BEFORE calling API, which prevents fatal runtime errors
+        const botMember = await interaction.guild.members.fetch(interaction.client.user.id);
+        if (role.position >= botMember.roles.highest.position) {
+            return await interaction.reply({
+                content: `❌ I cannot modify the role ${role.name} because it's higher than or equal to my highest role.`,
+                ephemeral: true
+            });
+        }
+
         if (!member.roles.cache.has(role.id)) {
             return await interaction.reply({
                 content: `⚠️ ${member.displayName} doesn't have the role ${role.name}.`,
@@ -39,12 +48,13 @@ module.exports = {
             });
         }
 
+        // Safely remove after validation
         await member.roles.remove(role);
 
-        // Remove from tracked roles if member is being tracked
-        const currentRoles = dataService.getMemberRoles(member.id);
+        // Fetch CURRENT database state ONLY AFTER Discord replies
+        const finalRoles = dataService.getMemberRoles(member.id);
         if (dataService.getMembers()[member.id]) {
-            const newRoles = currentRoles.filter(id => id !== role.id);
+            const newRoles = finalRoles.filter(id => id !== role.id);
             dataService.updateMemberRoles(member.id, newRoles);
         }
 
@@ -55,6 +65,7 @@ module.exports = {
             ephemeral: true
         });
 
-        await displayService.updateRoleDisplay();
+        // BUGFIX: Optimization to exclusively queue the individual member role recalculation
+        await displayService.updateRoleDisplay(interaction.guild, member.id);
     },
 };

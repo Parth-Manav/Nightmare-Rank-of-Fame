@@ -32,11 +32,11 @@ module.exports = {
             });
         }
 
-        // Check if bot can manage this role
+        // Check if bot can manage this role hierarchy
         const botMember = await interaction.guild.members.fetch(interaction.client.user.id);
         if (role.position >= botMember.roles.highest.position) {
             return await interaction.reply({
-                content: `❌ I cannot manage the role ${role.name} because it's higher than or equal to my highest role.`,
+                content: `❌ I cannot modify the role ${role.name} because it's higher than or equal to my highest role.`,
                 ephemeral: true
             });
         }
@@ -50,10 +50,10 @@ module.exports = {
 
         await member.roles.add(role);
 
-        // Add to tracked roles if member is being tracked
-        const currentRoles = dataService.getMemberRoles(member.id);
+        // Fetch CURRENT database state ONLY AFTER Discord replies
+        const finalRoles = dataService.getMemberRoles(member.id);
         if (dataService.getMembers()[member.id]) {
-            const newRoles = Array.from(new Set([...currentRoles, role.id]));
+            const newRoles = Array.from(new Set([...finalRoles, role.id]));
             dataService.updateMemberRoles(member.id, newRoles);
         }
 
@@ -64,6 +64,7 @@ module.exports = {
             ephemeral: true
         });
 
-        await displayService.updateRoleDisplay();
+        // BUGFIX: Call targeted update on just this user and do not recalculate all
+        await displayService.updateRoleDisplay(interaction.guild, member.id);
     },
 };

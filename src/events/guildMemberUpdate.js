@@ -6,11 +6,11 @@ const logger = require('../utils/logger');
 module.exports = {
     name: Events.GuildMemberUpdate,
     async execute(oldMember, newMember) {
-        // Check if member is tracked
-        const memberRoles = dataService.getMemberRoles(newMember.id);
-        if (memberRoles.length === 0 && !dataService.getMembers()[newMember.id]) return;
+        // Verify member is actually tracked
+        const isTracked = !!dataService.getMembers()[newMember.id];
+        if (!isTracked) return;
 
-        // Check for role changes relevant to managed roles
+        // Check for role changes relevant specifically to managed roles
         const oldRoles = oldMember.roles.cache
             .filter(r => dataService.isRoleManaged(r.id))
             .map(r => r.id)
@@ -21,13 +21,12 @@ module.exports = {
             .map(r => r.id)
             .sort();
 
+        // Only commit data and trigger the queue if tracked roles visibly changed
         if (JSON.stringify(oldRoles) !== JSON.stringify(newRoles)) {
-            // Update data
             dataService.updateMemberRoles(newMember.id, newRoles);
             logger.info(`Auto-updating display for ${newMember.displayName} due to role change`);
-
-            // Update display
-            await displayService.updateRoleDisplay();
+            // Instruct DisplayService to exclusively queue an update for THIS member
+            await displayService.updateRoleDisplay(newMember.guild, newMember.id);
         }
     },
 };

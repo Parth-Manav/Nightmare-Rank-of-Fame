@@ -5,13 +5,15 @@ const dataService = require('./dataService');
 class DisplayService {
     constructor() {
         this.client = null;
+        this.updateQueue = new Map();
+        this.isProcessing = false;
     }
 
     setClient(client) {
         this.client = client;
     }
 
-    async updateRoleDisplay() {
+    async updateRoleDisplay(guild = null, specificMemberId = null) {
         const channelId = dataService.getChannelId();
         if (!channelId) {
             logger.warn('No display channel set, skipping update');
@@ -20,22 +22,60 @@ class DisplayService {
 
         const channel = await this.client.channels.fetch(channelId).catch(() => null);
         if (!channel) {
-            logger.error('Display channel not found');
+            logger.error('Display channel not found. Auto-clearing invalid channel from DB to prevent further failures.');
+            dataService.setChannelId(null);
             return;
         }
 
-        const guild = channel.guild;
         const membersToDisplay = dataService.getMembers();
 
-        for (const [memberId, roleIds] of Object.entries(membersToDisplay)) {
-            await this.updateMemberDisplay(guild, channel, memberId, roleIds);
+        if (specificMemberId && guild) {
+            const roleIds = membersToDisplay[specificMemberId] || [];
+            this.queueMemberUpdate(guild, channel, specificMemberId, roleIds);
+        } else {
+            for (const [memberId, roleIds] of Object.entries(membersToDisplay)) {
+                const fallbackGuild = guild || this.client.guilds.cache.first();
+                if (fallbackGuild) {
+                    this.queueMemberUpdate(fallbackGuild, channel, memberId, roleIds);
+                }
+            }
         }
+    }
+
+    queueMemberUpdate(guild, channel, memberId, roleIds) {
+        // Enqueue update to map (deduplicates rapid changes for the same member)
+        this.updateQueue.set(memberId, { guild, channel, memberId, roleIds });
+        this.processQueue();
+    }
+
+    async processQueue() {
+        if (this.isProcessing) return;
+        this.isProcessing = true;
+
+        while (this.updateQueue.size > 0) {
+            const [key, task] = this.updateQueue.entries().next().value;
+            this.updateQueue.delete(key);
+
+            try {
+                await Promise.race([
+                    this.updateMemberDisplay(task.guild, task.channel, task.memberId, task.roleIds),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error('Discord Fetch API Hang Timeout')), 10000))
+                ]);
+            } catch (err) {
+                logger.error(`Update timeout/failed for ${task.memberId}, releasing queue loop:`, err);
+            }
+            
+            // Wait 1 second between processing elements to strictly obey Discord rate limits
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
+        this.isProcessing = false;
     }
 
     async updateMemberDisplay(guild, channel, memberId, roleIds) {
         const member = await guild.members.fetch(memberId).catch(() => null);
         if (!member) {
-            logger.warn(`Member ID ${memberId} not found in server`);
+            logger.warn(`Member ID ${memberId} not found in server. Skipping embed display.`);
             return;
         }
 
@@ -47,7 +87,6 @@ class DisplayService {
         const embed = new EmbedBuilder()
             .setTitle(`${member.displayName}'s Roles`)
             .setColor(member.displayHexColor || '#5865F2')
-            .setThumbnail(member.user.displayAvatarURL({ dynamic: true }))
             .setThumbnail(member.user.displayAvatarURL({ dynamic: true }));
 
         if (roles.length > 0) {

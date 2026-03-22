@@ -1,6 +1,5 @@
 const { SlashCommandBuilder, PermissionsBitField } = require('discord.js');
 const dataService = require('../../services/dataService');
-const displayService = require('../../services/displayService');
 const logger = require('../../utils/logger');
 
 module.exports = {
@@ -36,8 +35,10 @@ module.exports = {
                 }
             } catch (error) {
                 logger.error(`Error deleting message for member ${member.id}:`, error);
+            } finally {
+                // BUGFIX: Always clear the message ID even if fetch/delete failed
+                dataService.removeMessageId(member.id);
             }
-            dataService.removeMessageId(member.id);
         }
 
         logger.info(`Removed member ${member.displayName} (${member.id}) from tracking`);
