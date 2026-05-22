@@ -16,14 +16,13 @@ module.exports = {
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
         if (!member) {
-            return await interaction.reply({ content: '❌ Could not find that member in this server.', ephemeral: true });
+            return await interaction.reply({ content: 'Could not find that member in this server.', ephemeral: true });
         }
 
         if (!dataService.removeMember(member.id)) {
-            return await interaction.reply({ content: `⚠️ ${member.displayName} is not being tracked.`, ephemeral: true });
+            return await interaction.reply({ content: `${member.displayName} is not being tracked.`, ephemeral: true });
         }
 
-        // Delete the member's display message if it exists
         const messageId = dataService.getMessageId(member.id);
         if (messageId) {
             try {
@@ -36,13 +35,13 @@ module.exports = {
             } catch (error) {
                 logger.error(`Error deleting message for member ${member.id}:`, error);
             } finally {
-                // BUGFIX: Always clear the message ID even if fetch/delete failed
+                // Clear stale message IDs even if Discord fetch/delete fails.
                 dataService.removeMessageId(member.id);
             }
         }
 
         logger.info(`Removed member ${member.displayName} (${member.id}) from tracking`);
 
-        await interaction.reply({ content: `✅ Removed ${member.displayName} from the role display.`, ephemeral: true });
+        await interaction.reply({ content: `Removed ${member.displayName} from the role display.`, ephemeral: true });
     },
 };

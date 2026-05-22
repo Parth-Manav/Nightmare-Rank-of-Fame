@@ -9,6 +9,6 @@ module.exports = {
     async execute(interaction) {
         await interaction.deferReply({ ephemeral: true });
         await displayService.updateRoleDisplay();
-        await interaction.editReply({ content: '✅ Role display updated successfully.' });
+        await interaction.editReply({ content: 'Role display update queued successfully.' });
     },
 };

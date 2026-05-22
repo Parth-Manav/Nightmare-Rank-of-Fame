@@ -17,16 +17,16 @@ module.exports = {
         const member = await interaction.guild.members.fetch(user.id).catch(() => null);
 
         if (!member) {
-            return await interaction.reply({ content: '❌ Could not find that member in this server.', ephemeral: true });
+            return await interaction.reply({ content: 'Could not find that member in this server.', ephemeral: true });
         }
 
         if (!dataService.addMember(member.id)) {
-            return await interaction.reply({ content: `⚠️ ${member.displayName} is already being tracked.`, ephemeral: true });
+            return await interaction.reply({ content: `${member.displayName} is already being tracked.`, ephemeral: true });
         }
 
         logger.info(`Added member ${member.displayName} (${member.id}) to tracking`);
 
-        await interaction.reply({ content: `✅ Added ${member.displayName} to the role display.`, ephemeral: true });
+        await interaction.reply({ content: `Added ${member.displayName} to the role display.`, ephemeral: true });
         await displayService.updateRoleDisplay();
     },
 };

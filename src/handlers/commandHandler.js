@@ -1,6 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { REST, Routes } = require('discord.js');
+const config = require('../config');
 const logger = require('../utils/logger');
 
 class CommandHandler {
@@ -33,7 +34,7 @@ class CommandHandler {
     }
 
     async registerCommands() {
-        const rest = new REST({ version: '10' }).setToken(process.env.token);
+        const rest = new REST({ version: '10' }).setToken(config.discordToken);
         const commands = Array.from(this.commands.values());
 
         try {

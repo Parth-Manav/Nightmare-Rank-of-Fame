@@ -3,20 +3,42 @@ const fsPromises = require('fs/promises');
 const path = require('path');
 const logger = require('../utils/logger');
 
+const DEFAULT_DATA = {
+    version: '2.0.0',
+    channel_id: null,
+    members: {},
+    managed_roles: {},
+    message_ids: {}
+};
+
+function createDefaultData() {
+    return {
+        version: DEFAULT_DATA.version,
+        channel_id: DEFAULT_DATA.channel_id,
+        members: {},
+        managed_roles: {},
+        message_ids: {}
+    };
+}
+
+function getTempFilePath(dataFile) {
+    const parsed = path.parse(dataFile);
+    return path.join(parsed.dir, `${parsed.name}.tmp${parsed.ext}`);
+}
+
 class DataService {
-    constructor() {
-        this.dataFile = path.join(__dirname, '../../bot_data.json');
-        this.tempFile = path.join(__dirname, '../../bot_data.tmp.json');
-        this.data = {
-            version: '2.0.0',
-            channel_id: null,
-            members: {},
-            managed_roles: {},
-            message_ids: {}
-        };
+    constructor(options = {}) {
+        const defaultDataFile = path.join(__dirname, '../../bot_data.json');
+
+        this.dataFile = options.dataFile || process.env.BOT_DATA_FILE || defaultDataFile;
+        this.tempFile = options.tempFile || getTempFilePath(this.dataFile);
+        this.data = createDefaultData();
         this.isSaving = false;
         this.saveQueue = false;
-        this.loadDataSync();
+
+        if (options.load !== false) {
+            this.loadDataSync();
+        }
     }
 
     loadDataSync() {
@@ -28,8 +50,8 @@ class DataService {
                     this.data = { ...this.data, ...loadedData };
                     logger.info('Data loaded successfully');
                 } catch (parseError) {
-                    logger.error('CRITICAL FATAL: bot_data.json is corrupted and failed to parse!', parseError);
-                    logger.error('ABORTING BOOT TO PREVENT CASCADING DATA ERASURE.');
+                    logger.error('Runtime data file bot_data.json is corrupted and failed to parse.', parseError);
+                    logger.error('Startup aborted to avoid overwriting existing runtime state.');
                     process.exit(1);
                 }
             } else {
@@ -60,12 +82,12 @@ class DataService {
                     await fsPromises.unlink(this.tempFile).catch(() => {});
                 } else throw renameErr;
             }
-            logger.debug('Data saved successfully (Atomic)');
+            logger.debug('Data saved successfully with atomic file replacement');
         } catch (error) {
-            logger.error('Error saving data atomicaly:', error);
+            logger.error('Error saving data atomically:', error);
         } finally {
             this.isSaving = false;
-            // If another change occurred while saving, run it again to guarantee latest flush
+            // If state changed during a write, immediately flush the newest snapshot.
             if (this.saveQueue) {
                 await this.saveDataAsync();
             }
@@ -155,4 +177,8 @@ class DataService {
     }
 }
 
-module.exports = new DataService();
+const dataService = new DataService();
+
+module.exports = dataService;
+module.exports.DataService = DataService;
+module.exports.DEFAULT_DATA = DEFAULT_DATA;

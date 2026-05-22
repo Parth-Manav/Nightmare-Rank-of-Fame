@@ -17,7 +17,7 @@ module.exports = {
 
         if (!dataService.isRoleManaged(role.id)) {
             return await interaction.reply({
-                content: `⚠️ Not currently managing role: ${role.name}`,
+                content: `Not currently managing role: ${role.name}`,
                 ephemeral: true
             });
         }
@@ -26,7 +26,7 @@ module.exports = {
         logger.info(`No longer managing role ${role.name} (${role.id})`);
 
         await interaction.reply({
-            content: `✅ No longer managing role: ${role.name}`,
+            content: `No longer managing role: ${role.name}`,
             ephemeral: true
         });
 

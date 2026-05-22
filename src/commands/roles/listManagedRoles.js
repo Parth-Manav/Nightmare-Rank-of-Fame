@@ -12,7 +12,7 @@ module.exports = {
 
         if (managedRoleIds.length === 0) {
             return await interaction.reply({
-                content: '📋 No roles are currently being managed.',
+                content: 'No roles are currently being managed.',
                 ephemeral: true
             });
         }
@@ -20,11 +20,11 @@ module.exports = {
         const roles = managedRoleIds
             .map(id => interaction.guild.roles.cache.get(id))
             .filter(Boolean)
-            .map(role => `• ${role.name}`)
+            .map(role => `- ${role.name}`)
             .join('\n');
 
         const embed = new EmbedBuilder()
-            .setTitle('📋 Managed Roles')
+            .setTitle('Managed Roles')
             .setDescription(roles || 'No valid roles found.')
             .setColor('#5865F2')
             .setTimestamp();

@@ -3,6 +3,10 @@ const dataService = require('../services/dataService');
 const displayService = require('../services/displayService');
 const logger = require('../utils/logger');
 
+function haveSameRoleIds(left, right) {
+    return left.length === right.length && left.every((roleId, index) => roleId === right[index]);
+}
+
 module.exports = {
     name: Events.GuildMemberUpdate,
     async execute(oldMember, newMember) {
@@ -21,11 +25,10 @@ module.exports = {
             .map(r => r.id)
             .sort();
 
-        // Only commit data and trigger the queue if tracked roles visibly changed
-        if (JSON.stringify(oldRoles) !== JSON.stringify(newRoles)) {
+        // Only persist data and queue display work when managed roles visibly change.
+        if (!haveSameRoleIds(oldRoles, newRoles)) {
             dataService.updateMemberRoles(newMember.id, newRoles);
             logger.info(`Auto-updating display for ${newMember.displayName} due to role change`);
-            // Instruct DisplayService to exclusively queue an update for THIS member
             await displayService.updateRoleDisplay(newMember.guild, newMember.id);
         }
     },

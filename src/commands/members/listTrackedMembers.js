@@ -12,7 +12,7 @@ module.exports = {
 
         if (memberIds.length === 0) {
             return await interaction.reply({
-                content: '📋 No members are currently being tracked.',
+                content: 'No members are currently being tracked.',
                 ephemeral: true
             });
         }
@@ -22,12 +22,12 @@ module.exports = {
             const member = await interaction.guild.members.fetch(id).catch(() => null);
             if (member) {
                 const roleCount = (membersMap[id] || []).length;
-                members.push(`• ${member.displayName} (${roleCount} role${roleCount !== 1 ? 's' : ''})`);
+                members.push(`- ${member.displayName} (${roleCount} role${roleCount !== 1 ? 's' : ''})`);
             }
         }
 
         const embed = new EmbedBuilder()
-            .setTitle('📋 Tracked Members')
+            .setTitle('Tracked Members')
             .setDescription(members.join('\n') || 'No valid members found.')
             .setColor('#5865F2')
             .setTimestamp();

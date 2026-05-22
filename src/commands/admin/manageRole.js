@@ -5,7 +5,7 @@ const logger = require('../../utils/logger');
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('managerole')
-        .setDescription('Start managing a role (allows it to be tracked and displayed)')
+        .setDescription('Start managing a role so it can be tracked and displayed')
         .addRoleOption(option =>
             option.setName('role')
                 .setDescription('The role to manage')
@@ -16,7 +16,7 @@ module.exports = {
 
         if (dataService.isRoleManaged(role.id)) {
             return await interaction.reply({
-                content: `⚠️ Already managing role: ${role.name}`,
+                content: `Already managing role: ${role.name}`,
                 ephemeral: true
             });
         }
@@ -25,7 +25,7 @@ module.exports = {
         logger.info(`Now managing role ${role.name} (${role.id})`);
 
         await interaction.reply({
-            content: `✅ Now managing role: ${role.name}`,
+            content: `Now managing role: ${role.name}`,
             ephemeral: true
         });
     },
